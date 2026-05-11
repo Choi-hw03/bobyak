@@ -1,139 +1,101 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>대학 밥약 시스템</title>
     <style>
-        body {
-            font-family: 'Malgun Gothic', sans-serif;
-            padding: 30px;
-            background-color: #f4f7f6;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        input {
-            padding: 10px;
-            margin: 5px 0;
-            width: 100%;
-            box-sizing: border-box;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        button {
-            padding: 10px 20px;
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 10px;
-        }
-
-            button:hover {
-                background: #218838;
-            }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 30px;
-        }
-
-        th, td {
-            border: 1px solid #ddd;
-            padding: 12px;
-            text-align: center;
-        }
-
-        th {
-            background-color: #f8f9fa;
-            font-weight: bold;
-        }
-
-        tr:nth-child(even) {
-            background-color: #fafafa;
-        }
+        body { font-family: 'Pretendard', sans-serif; padding: 20px; background-color: #f0f2f5; color: #333; }
+        .container { max-width: 700px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h2 { text-align: center; color: #1a73e8; }
+        .form-group { margin-bottom: 25px; background: #f8f9fa; padding: 20px; border-radius: 8px; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 14px; background: #1a73e8; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        button:hover { background: #1557b0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        th, td { border-bottom: 1px solid #eee; padding: 12px; text-align: center; }
+        th { background-color: #f8f9fa; color: #555; }
+        .refresh-btn { background: #6c757d; width: auto; padding: 8px 15px; margin-bottom: 10px; font-size: 13px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>🍚 밥약 신청 시스템</h2>
-        <div style="margin-bottom: 30px;">
+        
+        <div class="form-group">
             <input type="text" id="studentId" placeholder="학번 (예: 2025314187)">
             <input type="text" id="name" placeholder="이름">
             <input type="text" id="menu" placeholder="먹고 싶은 메뉴">
             <button onclick="apply()">신청하기</button>
         </div>
 
-        <hr>
-
         <h3>📋 현재 신청 현황</h3>
-        <button onclick="fetchList()" style="background: #007bff; width: auto; margin-bottom: 10px;">새로고침</button>
+        <button class="refresh-btn" onclick="fetchList()">🔄 새로고침</button>
         <table>
             <thead>
                 <tr>
                     <th>학번</th>
                     <th>이름</th>
                     <th>메뉴</th>
-                    <th>신청시간</th>
                 </tr>
             </thead>
             <tbody id="list-body">
-                <!-- 데이터가 여기에 들어옵니다 -->
+                <tr><td colspan="3">데이터를 불러오는 중...</td></tr>
             </tbody>
         </table>
     </div>
 
     <script>
-        const API_URL = "http://localhost:3000/api";
+        // 현재 호스트 주소를 자동으로 감지 (Local이든 Render든 자동 대응)
+        const API_BASE = window.location.origin;
 
-        // 1. 신청 함수
         async function apply() {
             const studentId = document.getElementById('studentId').value;
             const name = document.getElementById('name').value;
             const menu = document.getElementById('menu').value;
 
-            const res = await fetch(`${API_URL}/apply`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ studentId, name, menu })
-            });
+            try {
+                const res = await fetch(`${API_BASE}/api/apply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ studentId, name, menu })
+                });
 
-            const data = await res.json();
-            alert(data.message);
-            if (res.ok) fetchList(); // 성공하면 목록 자동 갱신
+                const data = await res.json();
+                alert(data.message);
+                if(res.ok) fetchList();
+            } catch (e) {
+                alert("서버 연결에 실패했습니다.");
+            }
         }
 
-        // 2. 전체 목록 가져오기 함수
         async function fetchList() {
-            const res = await fetch(`${API_URL}/list`);
-            const data = await res.json();
+            try {
+                const res = await fetch(`${API_BASE}/api/list`);
+                const data = await res.json();
+                
+                const tbody = document.getElementById('list-body');
+                tbody.innerHTML = "";
 
-            const tbody = document.getElementById('list-body');
-            tbody.innerHTML = ""; // 기존 목록 초기화
+                if (data.length === 0) {
+                    tbody.innerHTML = "<tr><td colspan='3'>아직 신청자가 없습니다.</td></tr>";
+                    return;
+                }
 
-            data.forEach(item => {
-                const row = `<tr>
+                data.forEach(item => {
+                    const row = `<tr>
                         <td>${item.studentId}</td>
                         <td>${item.name}</td>
                         <td>${item.menu}</td>
-                        <td>${item.time}</td>
                     </tr>`;
-                tbody.innerHTML += row;
-            });
+                    tbody.innerHTML += row;
+                });
+            } catch (e) {
+                console.error("목록 로드 실패:", e);
+            }
         }
 
-        // 페이지 로드 시 목록 불러오기
+        // 페이지 접속 시 목록 자동 로드
         window.onload = fetchList;
     </script>
 </body>
